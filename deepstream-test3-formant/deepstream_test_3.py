@@ -384,7 +384,7 @@ def main(args):
         print("Creating H265 Encoder")
     if not encoder:
         sys.stderr.write(" Unable to create encoder")
-    encoder.set_property('bitrate', bitrate)
+    encoder.set_property('bitrate', 5000)
     if is_aarch64():
         encoder.set_property('preset-level', 1)
         encoder.set_property('insert-sps-pps', 1)

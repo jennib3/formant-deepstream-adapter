@@ -166,7 +166,7 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
                                                     obj_counter[PGIE_CLASS_ID_VEHICLE],
                                                     obj_counter[PGIE_CLASS_ID_BICYCLE],
                                                     obj_counter[PGIE_CLASS_ID_PERSON],
-                                                    obj_counter[PGIE_CLASS_ID_ROADSIGN])).start()
+                                                    obj_counter[PGIE_CLASS_ID_ROADSIGN]), daemon=True).start()
 
         # Get frame rate through this probe
         fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()

@@ -27,7 +27,8 @@ sys.path.append('../')
 import gi
 import configparser
 gi.require_version('Gst', '1.0')
-from gi.repository import GObject, Gst
+gi.require_version('GstRtspServer', '1.0')
+from gi.repository import GObject, Gst, GstRtspServer
 from gi.repository import GLib
 from ctypes import *
 import time
@@ -438,6 +439,9 @@ def main(args):
         nvosd.link(queue5)
         queue5.link(sink)   
 
+    encoder.link(rtppay)
+    rtppay.link(sink)
+
     # create an event loop and feed gstreamer bus mesages to it
     loop = GObject.MainLoop()
     bus = pipeline.get_bus()
@@ -448,6 +452,29 @@ def main(args):
         sys.stderr.write(" Unable to get src pad \n")
     else:
         tiler_src_pad.add_probe(Gst.PadProbeType.BUFFER, tiler_src_pad_buffer_probe, 0)
+
+    # Start streaming
+    rtsp_port_num = 8554
+    
+    server = GstRtspServer.RTSPServer.new()
+    server.props.service = "%d" % rtsp_port_num
+    server.attach(None)
+    
+    factory = GstRtspServer.RTSPMediaFactory.new()
+    factory.set_launch( "( udpsrc name=pay0 port=%d buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 \" )" % (updsink_port_num, codec))
+    factory.set_shared(True)
+    server.get_mount_points().add_factory("/ds-test", factory)
+    
+    print("\n *** DeepStream: Launched RTSP Streaming at rtsp://localhost:%d/ds-test ***\n\n" % rtsp_port_num)
+    
+    # Lets add probe to get informed of the meta data generated, we add probe to
+    # the sink pad of the osd element, since by that time, the buffer would have
+    # had got all the metadata.
+    osdsinkpad = nvosd.get_static_pad("sink")
+    if not osdsinkpad:
+        sys.stderr.write(" Unable to get sink pad of nvosd \n")
+    
+    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
 
     # List the sources
     print("Now playing...")

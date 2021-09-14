@@ -363,8 +363,14 @@ def main(args):
     tiler.set_property("height", TILED_OUTPUT_HEIGHT)
     # sink.set_property("qos",0)
 
+    nvvidconv_postosd = Gst.ElementFactory.make("nvvideoconvert", "convertor_postosd")
+    if not nvvidconv_postosd:
+        sys.stderr.write(" Unable to create nvvidconv_postosd \n")
 
 
+    # Create a caps filter
+    caps = Gst.ElementFactory.make("capsfilter", "filter")
+    caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420"))
  ##################################### Make the encoder
 
     stream_path = "detection"
@@ -418,6 +424,8 @@ def main(args):
     pipeline.add(nvosd)
     if is_aarch64():
         pipeline.add(transform)
+    pipeline.add(nvvidconv_postosd)
+    pipeline.add(caps)
     pipeline.add(encoder)
     pipeline.add(rtppay)        
     pipeline.add(sink)
@@ -438,7 +446,9 @@ def main(args):
     else:
         nvosd.link(queue5)
         queue5.link(sink)   
-
+    queue5.link(nvvidconv_postosd)
+    nvvidconv_postosd.link(caps)
+    caps.link(encoder)
     encoder.link(rtppay)
     rtppay.link(sink)
 

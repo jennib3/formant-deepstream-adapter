@@ -38,6 +38,10 @@ from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
 from common.FPS import GETFPS
 
+from formant.sdk.agent.v1 import Client as FormantClient
+fclient = None
+
+
 import pyds
 
 fps_streams={}
@@ -217,6 +221,10 @@ def main(args):
     for i in range(0,len(args)-1):
         fps_streams["stream{0}".format(i)]=GETFPS(i)
     number_sources=len(args)-1
+
+    # Formant Client initialization
+    fclient = FormantClient()
+    print("Formant Client Connected")
 
     # Standard GStreamer initialization
     GObject.threads_init()

@@ -240,7 +240,8 @@ def main(args):
     number_sources=len(args)-1
 
     # Formant Client initialization
-    global formant_client = FormantClient()
+    global formant_client
+    formant_client = FormantClient()
     print("Formant Client Connected")
 
     # Standard GStreamer initialization

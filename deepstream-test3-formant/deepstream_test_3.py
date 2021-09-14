@@ -40,6 +40,7 @@ from common.FPS import GETFPS
 
 from formant.sdk.agent.v1 import Client as FormantClient
 formant_client = None
+last_update_time = 0
 
 
 import pyds
@@ -138,8 +139,10 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
 
         global formant_client
         fclient = formant_client
-        if fclient is not None:
+        global last_update_time
+        if (fclient is not None) and time.time() - last_update_time > 1.0:
 
+            last_update_time = time.time()
             fclient.post_numericset(
                 "deepstream.detection",
                 {

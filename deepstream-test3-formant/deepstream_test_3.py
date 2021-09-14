@@ -140,7 +140,8 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         global formant_client
         fclient = formant_client
         global last_update_time
-        if (fclient is not None) and time.time() - last_update_time > 1.0:
+        # if (fclient is not None) and time.time() - last_update_time > 1.0:
+        if (fclient is not None):            
 
             last_update_time = time.time()
             fclient.post_numericset(
@@ -244,7 +245,7 @@ def main(args):
 
     # Formant Client initialization
     global formant_client
-    formant_client = FormantClient()
+    formant_client = FormantClient(ignore_throttled=True)
     print("Formant Client Connected")
 
     # Standard GStreamer initialization

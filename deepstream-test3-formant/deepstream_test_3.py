@@ -151,8 +151,6 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
                     "roadsigns": (int(obj_counter[PGIE_CLASS_ID_ROADSIGN]), None),
                     # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
                 },
-                {},
-                int(time.time())
             )
 
         # Get frame rate through this probe

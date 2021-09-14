@@ -472,7 +472,7 @@ def main(args):
     server.attach(None)
     
     factory = GstRtspServer.RTSPMediaFactory.new()
-    factory.set_launch( "( udpsrc name=pay0 port=%d buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96, profile=baseline \" )" % (updsink_port_num, codec))
+    factory.set_launch( "( udpsrc name=pay0 port=%d bitrate=400000 control-rate=1 buffer-size=524288 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96, profile=baseline \" )" % (updsink_port_num, codec))
     factory.set_shared(True)
     server.get_mount_points().add_factory("/ds-test", factory)
     

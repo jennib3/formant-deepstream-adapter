@@ -149,7 +149,7 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
                     "bicycles": (int(obj_counter[PGIE_CLASS_ID_BICYCLE]), None),
                     "people": (int(obj_counter[PGIE_CLASS_ID_PERSON]), None),
                     "roadsigns": (int(obj_counter[PGIE_CLASS_ID_ROADSIGN]), None),
-                    "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
+                    # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
                 },
             )
 

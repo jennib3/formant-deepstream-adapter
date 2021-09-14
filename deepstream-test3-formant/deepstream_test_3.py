@@ -39,7 +39,7 @@ from common.bus_call import bus_call
 from common.FPS import GETFPS
 
 from formant.sdk.agent.v1 import Client as FormantClient
-fclient = None
+formant_client = None
 
 
 import pyds
@@ -136,18 +136,22 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)"""
         print("Frame Number=", frame_number, "Number of Objects=",num_rects,"Vehicle_count=",obj_counter[PGIE_CLASS_ID_VEHICLE],"Person_count=",obj_counter[PGIE_CLASS_ID_PERSON])
 
-        fclient.post_numericset(
-            "deepstream.detection",
-            {
-                "frame number": (frame_number, None),
-                "total objects": (num_rects, None),
-                "vehicles": (obj_counter[PGIE_CLASS_ID_VEHICLE], None),
-                "bicycles": (obj_counter[PGIE_CLASS_ID_BICYCLE], None),
-                "people": (obj_counter[PGIE_CLASS_ID_PERSON], None),
-                "roadsigns": (obj_counter[PGIE_CLASS_ID_ROADSIGN], None),
-                "fps" : (fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps(), "Hz"),
-            },
-        )
+        global formant_client
+        fclient = formant_client
+        if fclient is not None:
+
+            fclient.post_numericset(
+                "deepstream.detection",
+                {
+                    "frame number": (frame_number, None),
+                    "total objects": (num_rects, None),
+                    "vehicles": (obj_counter[PGIE_CLASS_ID_VEHICLE], None),
+                    "bicycles": (obj_counter[PGIE_CLASS_ID_BICYCLE], None),
+                    "people": (obj_counter[PGIE_CLASS_ID_PERSON], None),
+                    "roadsigns": (obj_counter[PGIE_CLASS_ID_ROADSIGN], None),
+                    "fps" : (fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps(), "Hz"),
+                },
+            )
 
         # Get frame rate through this probe
         fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()
@@ -236,7 +240,7 @@ def main(args):
     number_sources=len(args)-1
 
     # Formant Client initialization
-    fclient = FormantClient()
+    global formant_client = FormantClient()
     print("Formant Client Connected")
 
     # Standard GStreamer initialization

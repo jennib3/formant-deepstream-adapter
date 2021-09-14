@@ -445,7 +445,7 @@ def main(args):
         transform.link(sink)
     else:
         nvosd.link(queue5)
-        queue5.link(sink)   
+        # queue5.link(sink)   
     queue5.link(nvvidconv_postosd)
     nvvidconv_postosd.link(caps)
     caps.link(encoder)

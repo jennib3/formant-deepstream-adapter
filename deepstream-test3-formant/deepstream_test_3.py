@@ -253,6 +253,9 @@ def main(args):
         sys.stderr.write("usage: %s <uri1> [uri2] ... [uriN]\n" % args[0])
         sys.exit(1)
 
+    codec = "H264"
+    bitrate = 4000000
+
     for i in range(0,len(args)-1):
         fps_streams["stream{0}".format(i)]=GETFPS(i)
     number_sources=len(args)-1
@@ -333,10 +336,10 @@ def main(args):
         if not transform:
             sys.stderr.write(" Unable to create transform \n")
 
-    print("Creating EGLSink \n")
-    sink = Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer")
-    if not sink:
-        sys.stderr.write(" Unable to create egl sink \n")
+    # print("Creating EGLSink \n")
+    # sink = Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer")
+    # if not sink:
+    #     sys.stderr.write(" Unable to create egl sink \n")
 
     if is_live:
         print("Atleast one of the sources is live")
@@ -357,7 +360,55 @@ def main(args):
     tiler.set_property("columns",tiler_columns)
     tiler.set_property("width", TILED_OUTPUT_WIDTH)
     tiler.set_property("height", TILED_OUTPUT_HEIGHT)
-    sink.set_property("qos",0)
+    # sink.set_property("qos",0)
+
+
+
+ ##################################### Make the encoder
+
+    stream_path = "detection"
+
+
+    if codec == "H264":
+        encoder = Gst.ElementFactory.make("nvv4l2h264enc", "encoder")
+        print("Creating H264 Encoder")
+    elif codec == "H265":
+        encoder = Gst.ElementFactory.make("nvv4l2h265enc", "encoder")
+        print("Creating H265 Encoder")
+    if not encoder:
+        sys.stderr.write(" Unable to create encoder")
+    encoder.set_property('bitrate', bitrate)
+    if is_aarch64():
+        encoder.set_property('preset-level', 1)
+        encoder.set_property('insert-sps-pps', 1)
+        encoder.set_property('bufapi-version', 1)
+    
+    # Make the payload-encode video into RTP packets
+    if codec == "H264":
+        rtppay = Gst.ElementFactory.make("rtph264pay", "rtppay")
+        print("Creating H264 rtppay")
+    elif codec == "H265":
+        rtppay = Gst.ElementFactory.make("rtph265pay", "rtppay")
+        print("Creating H265 rtppay")
+    if not rtppay:
+        sys.stderr.write(" Unable to create rtppay")
+    
+    # Make the UDP sink
+    updsink_port_num = 5400
+    sink = Gst.ElementFactory.make("udpsink", "udpsink")
+    if not sink:
+        sys.stderr.write(" Unable to create udpsink")
+    
+    sink.set_property('host', '224.224.255.255')
+    sink.set_property('port', updsink_port_num)
+    sink.set_property('async', False)
+    sink.set_property('sync', 1)
+    
+
+    
+    # pgie.set_property('config-file-path', "dstest1_pgie_config.txt")
+
+##################### ^ encoder
 
     print("Adding elements to Pipeline \n")
     pipeline.add(pgie)
@@ -366,6 +417,8 @@ def main(args):
     pipeline.add(nvosd)
     if is_aarch64():
         pipeline.add(transform)
+    pipeline.add(encoder)
+    pipeline.add(rtppay)        
     pipeline.add(sink)
 
     print("Linking elements in the Pipeline \n")

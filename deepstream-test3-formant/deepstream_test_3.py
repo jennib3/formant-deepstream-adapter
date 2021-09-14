@@ -84,6 +84,8 @@ def upload_formant_data(fnum, total_objects, vehicles, bikes, people, signs):
                 # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
             },
         )
+        print("upload")
+        return 0
 
 # tiler_sink_pad_buffer_probe  will extract metadata received on OSD sink pad
 # and update params for drawing rectangle, object information etc.

@@ -143,12 +143,12 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
             fclient.post_numericset(
                 "deepstream.detection",
                 {
-                    "frame number": (frame_number, None),
-                    "total objects": (num_rects, None),
-                    "vehicles": (obj_counter[PGIE_CLASS_ID_VEHICLE], None),
-                    "bicycles": (obj_counter[PGIE_CLASS_ID_BICYCLE], None),
-                    "people": (obj_counter[PGIE_CLASS_ID_PERSON], None),
-                    "roadsigns": (obj_counter[PGIE_CLASS_ID_ROADSIGN], None),
+                    "frame number": (frame_number, int),
+                    "total objects": (num_rects, int),
+                    "vehicles": (obj_counter[PGIE_CLASS_ID_VEHICLE], int),
+                    "bicycles": (obj_counter[PGIE_CLASS_ID_BICYCLE], int),
+                    "people": (obj_counter[PGIE_CLASS_ID_PERSON], int),
+                    "roadsigns": (obj_counter[PGIE_CLASS_ID_ROADSIGN], int),
                     "fps" : (fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps(), "Hz"),
                 },
             )

@@ -68,7 +68,7 @@ def upload_formant_data(fnum, total_objects, vehicles, bikes, people, signs):
     global formant_client
     fclient = formant_client
     global last_update_time
-    time.sleep(1.0)
+    time.sleep(0.05)
     # if (fclient is not None) and time.time() - last_update_time > 1.0:
     if (fclient is not None):            
 

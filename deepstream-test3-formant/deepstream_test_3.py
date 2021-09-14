@@ -37,6 +37,7 @@ import platform
 from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
 from common.FPS import GETFPS
+import threading
 
 from formant.sdk.agent.v1 import Client as FormantClient
 formant_client = None
@@ -61,6 +62,28 @@ GST_CAPS_FEATURES_NVMM="memory:NVMM"
 OSD_PROCESS_MODE= 0
 OSD_DISPLAY_TEXT= 0
 pgie_classes_str= ["Vehicle", "TwoWheeler", "Person","RoadSign"]
+
+
+def upload_formant_data(fnum, total_objects, vehicles, bikes, people, signs):
+    global formant_client
+    fclient = formant_client
+    global last_update_time
+    # if (fclient is not None) and time.time() - last_update_time > 1.0:
+    if (fclient is not None):            
+
+        last_update_time = time.time()
+        fclient.post_numericset(
+            "deepstream.detection",
+            {
+                "frame number": (int(fnum), None),
+                "total objects": (int(total_objects), None),
+                "vehicles": (int(vehicles), None),
+                "bicycles": (int(bikes), None),
+                "people": (int(people), None),
+                "roadsigns": (int(signs), None),
+                # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
+            },
+        )
 
 # tiler_sink_pad_buffer_probe  will extract metadata received on OSD sink pad
 # and update params for drawing rectangle, object information etc.
@@ -137,25 +160,13 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)"""
         print("Frame Number=", frame_number, "Number of Objects=",num_rects,"Vehicle_count=",obj_counter[PGIE_CLASS_ID_VEHICLE],"Person_count=",obj_counter[PGIE_CLASS_ID_PERSON])
 
-        global formant_client
-        fclient = formant_client
-        global last_update_time
-        # if (fclient is not None) and time.time() - last_update_time > 1.0:
-        if (fclient is not None):            
 
-            last_update_time = time.time()
-            fclient.post_numericset(
-                "deepstream.detection",
-                {
-                    "frame number": (int(frame_number), None),
-                    "total objects": (int(num_rects), None),
-                    "vehicles": (int(obj_counter[PGIE_CLASS_ID_VEHICLE]), None),
-                    "bicycles": (int(obj_counter[PGIE_CLASS_ID_BICYCLE]), None),
-                    "people": (int(obj_counter[PGIE_CLASS_ID_PERSON]), None),
-                    "roadsigns": (int(obj_counter[PGIE_CLASS_ID_ROADSIGN]), None),
-                    # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
-                },
-            )
+        threading.Thread(target=upload_formant_data(frame_number, 
+                                                    num_rects,
+                                                    obj_counter[PGIE_CLASS_ID_VEHICLE],
+                                                    obj_counter[PGIE_CLASS_ID_BICYCLE],
+                                                    obj_counter[PGIE_CLASS_ID_PERSON],
+                                                    obj_counter[PGIE_CLASS_ID_ROADSIGN])).start()
 
         # Get frame rate through this probe
         fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()

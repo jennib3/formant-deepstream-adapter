@@ -152,7 +152,7 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
                     # "fps" : (int(fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()), "Hz"),
                 },
                 {},
-                time.time()
+                int(time.time())
             )
 
         # Get frame rate through this probe

@@ -123,6 +123,7 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         print("Source Frame Height ", frame_meta.source_frame_height)
         print("Num object meta ", frame_meta.num_obj_meta)
         '''
+
         frame_number=frame_meta.frame_num
         l_obj=frame_meta.obj_meta_list
         num_rects = frame_meta.num_obj_meta
@@ -139,6 +140,10 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
             except StopIteration:
                 break
             obj_counter[obj_meta.class_id] += 1
+            rect_params = pyds.NvOSD_RectParams.cast(obj_meta.rect_params.data)
+            center = [int(rect_params.left + rect_params.width/2), int(rect_params.top + rect_params.height/2)]
+            print(center)
+
             try: 
                 l_obj=l_obj.next
             except StopIteration:

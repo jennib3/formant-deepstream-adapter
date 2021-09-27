@@ -47,7 +47,7 @@ from formant.sdk.agent.v1 import Client as FormantClient
 formant_client = None
 last_update_time = -1
 loop = None
-last_send_time = 0
+last_send_time = -1
 
 # sys.path.append('./formant-onvif-ptz-adapter/')
 # from onvif_controller import OnvifController

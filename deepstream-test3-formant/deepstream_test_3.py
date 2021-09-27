@@ -39,11 +39,20 @@ from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
 from common.FPS import GETFPS
 import threading
+import asyncio
+
+from pprint import pprint
 
 from formant.sdk.agent.v1 import Client as FormantClient
 formant_client = None
-last_update_time = 0
+last_update_time = -1
+loop = None
+last_send_time = 0
 
+# sys.path.append('./formant-onvif-ptz-adapter/')
+# from onvif_controller import OnvifController
+# onvif = None
+tracking_id = 0
 
 import pyds
 
@@ -89,6 +98,49 @@ def upload_formant_data(fnum, total_objects, vehicles, bikes, people, signs):
         print("upload")
         return 0
 
+# PAN_AXIS = 0
+# TILT_AXIS = 1
+# ZOOM_AXIS = 2
+
+async def send_ptz(pan, tilt, zoom):
+    print("sending?")
+    global formant_client
+
+    formant_client.post_numericset(
+            "ptz_command",
+            {"pan": (pan, ""), "tilt": (tilt, ""), "zoom": (zoom, "")},
+        )
+
+    # if (abs(pan) > 0):
+    #     formant_client.post_numericset(
+    #             "ptz_command",
+    #             {"value": (pan, ""), "axis": (PAN_AXIS, "")},
+    #         )
+    #     await asyncio.sleep(abs(pan) + 1.0)
+
+    # if (abs(tilt) > 0):
+    #     formant_client.post_numericset(
+    #             "ptz_command",
+    #             {"value": (tilt, ""), "axis": (TILT_AXIS, "")},
+    #         )    
+    #     await asyncio.sleep(abs(tilt) + 0.2)
+
+    # if (abs(zoom) > 0):
+    #     formant_client.post_numericset(
+    #             "ptz_command",
+    #             {"value": (zoom, ""), "axis": (ZOOM_AXIS, "")},
+    #         )    
+            # asyncio.sleep(abs(zoom + 0.2))
+
+def handle_buttons(control):
+    if control.bitset.bits[0].key == "center_next_object":
+        reset_command_time()
+        print("Centering")
+
+def reset_command_time():
+    global last_send_time
+    last_send_time = 0
+
 # tiler_sink_pad_buffer_probe  will extract metadata received on OSD sink pad
 # and update params for drawing rectangle, object information etc.
 def tiler_src_pad_buffer_probe(pad,info,u_data):
@@ -133,6 +185,9 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         PGIE_CLASS_ID_BICYCLE:0,
         PGIE_CLASS_ID_ROADSIGN:0
         }
+
+        pan_control = 0
+        tilt_control = 0
         while l_obj is not None:
             try: 
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -140,14 +195,55 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
             except StopIteration:
                 break
             obj_counter[obj_meta.class_id] += 1
-            rect_params = pyds.NvOSD_RectParams.cast(obj_meta.rect_params.data)
+            rect_params = obj_meta.rect_params
             center = [int(rect_params.left + rect_params.width/2), int(rect_params.top + rect_params.height/2)]
             print(center)
+            # print(obj_meta.object_id)
+            global tracking_id
+
+            if tracking_id == 0:
+                tracking_id = obj_meta.object_id
+
+            if tracking_id == obj_meta.object_id:
+                pan_control_gain = -1/(300)
+                tilt_control_gain = 1/(300)
+
+                pan_control_error = 1920/2 - center[0]
+                tilt_control_error = 1080/2 - center[1]
+
+                pan_control = pan_control_error * pan_control_gain
+                tilt_control = tilt_control_error * tilt_control_gain
 
             try: 
                 l_obj=l_obj.next
             except StopIteration:
                 break
+
+
+        global last_send_time
+        if (last_send_time == 0 and (pan_control != 0 or tilt_control != 0) ):
+            last_send_time = time.time()
+            l2 = asyncio.new_event_loop()
+            asyncio.set_event_loop(l2)
+            if (abs(pan_control) < 0.03):
+                pan_control = 0
+            if (abs(tilt_control) < 0.03):
+                tilt_control = 0
+            l2.run_until_complete(send_ptz(pan_control,tilt_control,0))
+
+        # asyncio.run_coroutine_threadsafe(send_ptz(pan_control,0,0), loop=loop)
+
+        # asyncio.Task(send_ptz(0,0,0),loop)
+
+        # if (frame_number % 5 == 0):
+            # threading.Thread(target=onvif._continuous_ptz_move(pan_control,0,0))
+        # if pan_control == 0:
+            # threading.Thread(target=onvif._continuous_ptz_move(0,0,0))
+            # pass
+        # else:
+            # threading.Thread(target=onvif._continuous_ptz_move(pan_control,0,0))
+            # threading.Thread(target=onvif._nudge(onvif.sign(pan_control)*1,0,0,abs(pan_control)))
+
         """display_meta=pyds.nvds_acquire_display_meta_from_pool(batch_meta)
         display_meta.num_labels = 1
         py_nvosd_text_params = display_meta.text_params[0]
@@ -170,12 +266,12 @@ def tiler_src_pad_buffer_probe(pad,info,u_data):
         print("Frame Number=", frame_number, "Number of Objects=",num_rects,"Vehicle_count=",obj_counter[PGIE_CLASS_ID_VEHICLE],"Person_count=",obj_counter[PGIE_CLASS_ID_PERSON])
 
 
-        threading.Thread(target=upload_formant_data(frame_number, 
-                                                    num_rects,
-                                                    obj_counter[PGIE_CLASS_ID_VEHICLE],
-                                                    obj_counter[PGIE_CLASS_ID_BICYCLE],
-                                                    obj_counter[PGIE_CLASS_ID_PERSON],
-                                                    obj_counter[PGIE_CLASS_ID_ROADSIGN]))
+        # threading.Thread(target=upload_formant_data(frame_number, 
+        #                                             num_rects,
+        #                                             obj_counter[PGIE_CLASS_ID_VEHICLE],
+        #                                             obj_counter[PGIE_CLASS_ID_BICYCLE],
+        #                                             obj_counter[PGIE_CLASS_ID_PERSON],
+        #                                             obj_counter[PGIE_CLASS_ID_ROADSIGN]))
 
         # Get frame rate through this probe
         fps_streams["stream{0}".format(frame_meta.pad_index)].get_fps()
@@ -268,8 +364,22 @@ def main(args):
 
     # Formant Client initialization
     global formant_client
-    formant_client = FormantClient(ignore_throttled=True)
+    formant_client = FormantClient(ignore_throttled=True, agent_url='192.168.0.12:5501')
     print("Formant Client Connected")
+
+    formant_client.register_teleop_callback(
+        handle_buttons, ["Buttons"]
+    )
+
+    # global onvif
+    # onvif = OnvifController(
+    #         "192.168.0.101", 
+    #         8999, 
+    #         "admin", "admin", 
+    #         1.0, 
+    #         1.0, 
+    #         1.0
+    #     )
 
     # Standard GStreamer initialization
     GObject.threads_init()
@@ -459,6 +569,7 @@ def main(args):
     rtppay.link(sink)
 
     # create an event loop and feed gstreamer bus mesages to it
+    global loop
     loop = GObject.MainLoop()
     bus = pipeline.get_bus()
     bus.add_signal_watch()
@@ -477,7 +588,7 @@ def main(args):
     server.attach(None)
     
     factory = GstRtspServer.RTSPMediaFactory.new()
-    factory.set_launch( "( udpsrc name=pay0 port=%d bitrate=400000 control-rate=1 buffer-size=524288 iframeinterval=10 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96, profile=baseline \" )" % (updsink_port_num, codec))
+    factory.set_launch( "( udpsrc name=pay0 port=%d caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96, profile=baseline \" )" % (updsink_port_num, codec))
     factory.set_shared(True)
     server.get_mount_points().add_factory("/ds-test", factory)
     
@@ -502,12 +613,14 @@ def main(args):
     # start play back and listed to events		
     pipeline.set_state(Gst.State.PLAYING)
     try:
+        # loop.run_forever()
         loop.run()
     except:
         pass
     # cleanup
     print("Exiting app\n")
     pipeline.set_state(Gst.State.NULL)
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
